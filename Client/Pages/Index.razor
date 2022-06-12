@@ -1,0 +1,153 @@
+﻿@page "/"
+@using Google.Protobuf.WellKnownTypes
+@using Grpc.Core
+@inject Restaurant.RestaurantClient client
+
+
+<PageTitle>Index</PageTitle>
+
+
+
+@if(@orderPage)
+{
+ <div class="container">
+  
+<table class="table table-hover">
+
+      @if(dishes.Count == 0)
+{
+    <p>Wczytywanie...</p>
+}
+else
+{
+  
+   @foreach(var d in dishes)
+{
+    <div class="row">
+     <div class="col-4">
+         @(@d.Name+" "+ @d.Price+" zł")
+    </div>
+    <div class="col-2">
+        <button class="btn btn-info" style="margin-left:30px" @onclick="() => Add(d)">Dodaj</button>
+
+    </div>
+    </div>
+    <hr />
+} 
+}   
+    <br />
+    <br />
+
+    @foreach(var d in temp)
+    {
+       @d.Name  @(" "+@tab[d.Id]+"x ") @(@tab[d.Id]*d.Price+" zł")<br/>     
+    }
+    <br/>
+    @if(cart.Count != 0)
+    {
+        @("Całkowity Koszt: "+@CartPrice() + " zł")
+        <br/>
+        @("Podaj numer stolika:") <input @bind="@tableNumber" size=10 type="number">
+        @if(@errorMessage)
+        {
+            <div class="alert alert-warning d-flex align-items-cente">Nieprawidłowy numer stolika</div>
+        }
+        <button class="btn btn-success m-4" onclick="@(async () => await CreateOrder())" >Złóż zamówienie</button>
+    }
+    </table>
+    </div>
+}
+@if(@loading)
+{
+    <div class="loader"></div>
+}
+
+@if(@completeOrder)
+{
+    <p>Twoje zamówienie zostało przekazane do realizacji.</p>
+    <p>Numer zamówienia <u><b> @orderComplete.Id </b></u> Stolik nr  <u><b> @tableNumber</b></u></p>
+}
+
+
+
+@code{
+    List<Dish> dishes = new List<Dish>();
+    List<Dish> temp = new List<Dish>();
+    List<Dish> cart = new List<Dish>();
+    Order orderComplete = new Order();
+    bool errorMessage=false;
+    int tableNumber = 0;
+    int[] tab = new int[100];
+    bool orderPage = true;
+    bool loading = false;
+    bool completeOrder = false;
+    Dish dish = new Dish();
+    string? test;
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDishes();
+
+    }
+    private async Task LoadDishes()
+    {
+        var call = client.GetMenu(new Menu());
+        await foreach(var response in call.ResponseStream.ReadAllAsync())
+        {
+            dishes.Add(response);
+        }
+    }
+    private async Task LoadDish()
+    {
+        dish = await client.GetDishAsync(new DishId { Id = 2 });
+    }
+    private void Add(Dish dish)
+    {
+        if(!cart.Contains(dish))
+        {
+            temp.Add(dish);
+        }
+        tab[dish.Id]++;
+        cart.Add(dish);  
+    }
+    private float CartPrice()
+    {
+        float price=0;
+        foreach(var c in cart)
+        {
+            price += c.Price;
+        }
+        return price;
+    }
+    private async Task CreateOrder()
+    {
+
+        if(tableNumber <= 0 || tableNumber >=25 )
+        {
+            tableNumber = 0;
+            errorMessage = true;
+            return;
+        }
+
+        var timeStamp = new Timestamp() { Seconds = DateTime.Now.Second };
+        List<int> dishesId = new List<int>();
+        foreach(var c in cart)
+        {
+            dishesId.Add(c.Id);
+        }
+        var order = new Order
+            {
+                TableNumber = tableNumber,
+                Time = timeStamp,
+                TotalPrice = CartPrice(),
+
+            };
+        order.DishesId.AddRange(dishesId);
+        orderPage = false;
+        loading = true;
+        orderComplete = await client.CreateOrderAsync(order);
+
+        await Task.Delay(3000);
+        loading = false;
+        completeOrder = true;
+    }
+}

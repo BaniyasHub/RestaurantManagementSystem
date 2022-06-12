@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+
+
+option csharp_namespace = "Client";
+
+package restaurant;
+
+
+service Restaurant {
+  rpc CreateDish (Dish) returns (Dish);
+  rpc GetDish (DishId) returns (Dish);
+  rpc EditDish (Dish) returns (Dish);
+  rpc DeleteDish (DishId) returns (Response);
+  rpc GetMenu (Menu) returns (stream Dish);
+  rpc GetDishes (Menu) returns (stream Dish);
+  rpc CompleteOrder (OrderId) returns (Response);
+  rpc CreateOrder (Order) returns (Order);
+  rpc GetOrders (Orders) returns (stream Order);
+  rpc ChangeVisibility(DishId) returns (Response);
+}
+
+
+message Dish {
+
+  int32 id = 1;
+  string name = 2;
+  float price = 3;
+  bool isVisible = 4;
+}
+message DishId{
+  int32 id = 1;
+}
+message Order{
+
+  int32 id = 1;
+  repeated int32 dishesId = 2;
+  int32 tableNumber = 3;
+  bool completed = 4;
+  float totalPrice = 5;
+  google.protobuf.Timestamp time = 6;
+}
+message OrderId{
+	int32 id = 1;
+}
+message Menu{
+  
+}
+message Orders{
+  
+}
+message Response{
+  bool result = 1;
+}

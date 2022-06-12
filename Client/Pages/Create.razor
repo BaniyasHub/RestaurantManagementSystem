@@ -1,0 +1,35 @@
+﻿@page "/create"
+@inject Restaurant.RestaurantClient client
+<PageTitle>Stwórz</PageTitle>
+
+<h1>Dodaj nowe danie</h1>
+
+@if(!success)
+{
+   <div class="form-group row">
+   <div class="col-auto">
+    <label>Nazwa</label>
+    <input  placeholder="Nazwa" @bind="@name" class="form-control" type="text">
+    <label>Cena</label>
+    <input  placeholder="Cena" @bind="@price" class="form-control" type="text">
+    <br />
+    <button class="btn btn-outline-success" type="submit" @onclick="@(async () => await CreateDish())">Stwórz</button>
+  </div>
+    </div>
+}
+else
+{
+    <p>Pomyślnie utworzono nowe danie.</p>
+}
+
+@code {
+    string name = string.Empty;
+    float price=0;
+    bool success=false;
+
+    private async Task CreateDish()
+    {
+        await client.CreateDishAsync(new Dish {Name = name, Price = price, IsVisible = true });
+        success = true;
+    }
+}

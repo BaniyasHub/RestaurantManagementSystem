@@ -1,0 +1,59 @@
+﻿@page "/orders"
+@using Google.Protobuf.WellKnownTypes
+@using Grpc.Core
+@inject Restaurant.RestaurantClient client
+
+
+<h3>Zamówienia</h3>
+@foreach(var o in orders)
+{
+    @("Id zamówienia: "+ @o.Id +" Całkowita cena: "+@o.TotalPrice+" zł" + " Numer stolika: " + @o.TableNumber +"   ")
+    <button class="btn btn-secondary" @onclick="() => CompleteOrder(o.Id)">Ukończone</button>
+    <br /> 
+    @(" Czas zamówienia: "+ @o.Time.ToDateTime().ToString("HH:mm:ss, dddd dd MMMM yyyy "))
+   
+    <br />
+    @("Zamówione dania:")<br/>
+    @foreach(var d in o.DishesId)
+    {
+        @dishes.Where(a => a.Id == d).FirstOrDefault()?.Name; <br />
+    }
+    <br/>
+    <hr />
+}
+
+
+
+@code {
+    List<Order> orders = new List<Order>();
+    List<Dish> dishes = new List<Dish>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadOrders();
+        await LoadDishes();
+    }
+
+    private async Task LoadOrders()
+    {
+        var call = client.GetOrders(new Client.Orders());
+        await foreach(var response in call.ResponseStream.ReadAllAsync())
+        {
+            orders.Add(response);
+        }
+    }
+    private async Task LoadDishes()
+    {
+        var call = client.GetDishes(new Menu());
+        await foreach(var response in call.ResponseStream.ReadAllAsync())
+        {
+            dishes.Add(response);
+        }
+    }
+    private async Task CompleteOrder(int id)
+    {
+        var call = await client.CompleteOrderAsync(new OrderId{Id=id});
+        var order = orders.Where(o => o.Id == id).FirstOrDefault();
+        orders.Remove(order);
+    }
+}

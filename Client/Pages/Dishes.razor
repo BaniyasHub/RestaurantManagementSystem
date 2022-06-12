@@ -1,0 +1,62 @@
+﻿@page "/dishes"
+@using Google.Protobuf.WellKnownTypes
+@using Grpc.Core
+@inject Restaurant.RestaurantClient client
+
+
+<h3>Operacje na daniach.</h3>
+<table class="table table-bordered">
+      <thead>
+    <tr>
+      <th scope="col">Id</th>
+      <th scope="col">Nazwa</th>
+      <th scope="col">Widoczny</th>
+      <th scope="col">Akcje</th>
+    </tr>
+  </thead>
+  <tbody>
+@foreach(var o in dishes)
+{
+    <tr>
+        <td>@o.Id</td>
+        <td>@o.Name</td>
+        <td>@(@o.IsVisible ? "Tak" : "Nie")</td>
+        <td>
+        <button type="submit" class="btn btn-danger"@onclick="()=> DeleteDish(o.Id)" >Usuń</button>
+        
+        <button type="submit" class="btn btn-info" @onclick="()=> ChangeStatus(o.Id)" >Zmień Widoczność</button>
+        </td>
+    </tr>
+}
+</tbody>
+</table>
+
+
+@code {
+    List<Dish> dishes = new List<Dish>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDishes();
+    }
+
+    private async Task LoadDishes()
+    {
+        dishes.Clear();
+        var call = client.GetDishes(new Menu());
+        await foreach(var response in call.ResponseStream.ReadAllAsync())
+        {
+            dishes.Add(response);
+        }
+    }
+    private async Task ChangeStatus(int Id)
+    {
+        await client.ChangeVisibilityAsync(new DishId { Id = Id });
+        await LoadDishes();
+    }
+    private async Task DeleteDish(int Id)
+    {
+        await client.DeleteDishAsync(new DishId { Id = Id });
+        await LoadDishes();
+    }
+}
